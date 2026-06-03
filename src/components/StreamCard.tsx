@@ -34,12 +34,34 @@ export function StreamCard({
     refreshSignal,
   );
 
+  const isSender = connectedAddress === stream.sender;
+  const isRecipient = connectedAddress === stream.recipient;
+
+  // Direction relative to the connected wallet, for the role badge.
+  const role =
+    isSender && isRecipient
+      ? { label: "Self", style: "bg-gray-100 text-gray-600" }
+      : isRecipient
+        ? { label: "Incoming", style: "bg-emerald-100 text-emerald-800" }
+        : isSender
+          ? { label: "Outgoing", style: "bg-blue-100 text-blue-800" }
+          : null;
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-900">
-          Stream #{id.toString()}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900">
+            Stream #{id.toString()}
+          </span>
+          {role && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-xs font-medium ${role.style}`}
+            >
+              {role.label}
+            </span>
+          )}
+        </div>
         <span
           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[stream.status]}`}
         >

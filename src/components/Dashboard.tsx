@@ -68,18 +68,32 @@ export function Dashboard({
     );
   }
 
+  const incoming = streams.filter(
+    ({ stream }) =>
+      stream.recipient === address && stream.sender !== address,
+  ).length;
+  const outgoing = streams.filter(
+    ({ stream }) =>
+      stream.sender === address && stream.recipient !== address,
+  ).length;
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {streams.map(({ id, stream }) => (
-        <StreamCard
-          key={id.toString()}
-          id={id}
-          stream={stream}
-          connectedAddress={address}
-          refreshSignal={refreshSignal}
-          onActionComplete={onStreamChanged}
-        />
-      ))}
+    <div>
+      <p className="mb-4 text-sm text-gray-500">
+        {incoming} incoming · {outgoing} outgoing
+      </p>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {streams.map(({ id, stream }) => (
+          <StreamCard
+            key={id.toString()}
+            id={id}
+            stream={stream}
+            connectedAddress={address}
+            refreshSignal={refreshSignal}
+            onActionComplete={onStreamChanged}
+          />
+        ))}
+      </div>
     </div>
   );
 }
