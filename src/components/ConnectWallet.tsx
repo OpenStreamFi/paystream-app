@@ -3,11 +3,7 @@
 // state. No Freighter calls happen here directly.
 
 import type { UseWalletReturn } from "../hooks/useWallet";
-
-// Turn "GABC...XYZ123" into "GABC…Z123" so it fits in a button.
-function shortenAddress(addr: string): string {
-  return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
-}
+import { shortenAddress } from "../lib/format";
 
 export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
   const {

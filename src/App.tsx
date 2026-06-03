@@ -4,6 +4,7 @@
 
 import { useWallet } from "./hooks/useWallet";
 import { ConnectWallet } from "./components/ConnectWallet";
+import { Dashboard } from "./components/Dashboard";
 import { CONTRACT_ID } from "./config";
 
 function App() {
@@ -34,23 +35,18 @@ function App() {
           streams secured by the PayStream Soroban contract.
         </p>
 
-        {/* Connection-state panel — proves the wallet wiring works end to end. */}
-        <div className="mt-10 rounded-xl border border-gray-200 bg-white p-6">
+        {/* When connected, show the dashboard of the user's streams.
+            Otherwise prompt them to connect. */}
+        <div className="mt-10">
           {wallet.address ? (
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-emerald-700">
-                ✓ Wallet connected
-              </p>
-              <p className="font-mono text-sm break-all text-gray-700">
-                {wallet.address}
-              </p>
-              <p className="text-sm text-gray-500">
-                Network:{" "}
-                <span className="font-medium">{wallet.network ?? "unknown"}</span>
-              </p>
-            </div>
+            <section>
+              <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                My Streams
+              </h3>
+              <Dashboard address={wallet.address} />
+            </section>
           ) : (
-            <p className="text-gray-500">
+            <p className="rounded-xl border border-gray-200 bg-white p-6 text-gray-500">
               No wallet connected yet. Click{" "}
               <span className="font-medium">Connect Wallet</span> in the top right
               to get started.
