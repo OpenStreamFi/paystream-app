@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, type SyntheticEvent } from "react";
 import { StrKey } from "@stellar/stellar-sdk";
 import { createStream } from "../lib/contract";
 import { xlmToStroops } from "../lib/format";
@@ -21,7 +21,7 @@ export function CreateStreamForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: SyntheticEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
