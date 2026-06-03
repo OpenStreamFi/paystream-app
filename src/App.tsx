@@ -2,15 +2,21 @@
 // wallet button and a panel that reflects the connection state. Everything
 // else (creating streams, withdrawing, etc.) will hang off this later.
 
+import { useState } from "react";
 import { useWallet } from "./hooks/useWallet";
 import { ConnectWallet } from "./components/ConnectWallet";
 import { Dashboard } from "./components/Dashboard";
+import { CreateStreamForm } from "./components/CreateStreamForm";
 import { CONTRACT_ID } from "./config";
 
 function App() {
   // One call gives us the whole wallet API. We pass it down to ConnectWallet
   // so there's a single source of truth for "who is connected".
   const wallet = useWallet();
+
+  // Bumping this counter re-runs the Dashboard's fetch. The form increments it
+  // after a successful create so the new stream appears without a page reload.
+  const [refresh, setRefresh] = useState(0);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -39,12 +45,18 @@ function App() {
             Otherwise prompt them to connect. */}
         <div className="mt-10">
           {wallet.address ? (
-            <section>
-              <h3 className="mb-4 text-lg font-semibold text-gray-900">
-                My Streams
-              </h3>
-              <Dashboard address={wallet.address} />
-            </section>
+            <div className="space-y-10">
+              <CreateStreamForm
+                sender={wallet.address}
+                onCreated={() => setRefresh((n) => n + 1)}
+              />
+              <section>
+                <h3 className="mb-4 text-lg font-semibold text-gray-900">
+                  My Streams
+                </h3>
+                <Dashboard address={wallet.address} refreshSignal={refresh} />
+              </section>
+            </div>
           ) : (
             <p className="rounded-xl border border-gray-200 bg-white p-6 text-gray-500">
               No wallet connected yet. Click{" "}

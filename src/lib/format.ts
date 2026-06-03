@@ -25,3 +25,26 @@ export function formatTokenAmount(raw: bigint, decimals = 7): string {
   const body = fractionStr ? `${whole}.${fractionStr}` : `${whole}`;
   return negative ? `-${body}` : body;
 }
+
+// Inverse of formatTokenAmount: turn a human XLM string ("1.5") into stroops
+// (bigint). We parse via strings, never floats, so amounts don't lose precision.
+// Throws on invalid input or more than `decimals` fractional digits.
+export function xlmToStroops(input: string, decimals = 7): bigint {
+  const trimmed = input.trim();
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    throw new Error("Enter a valid positive amount (e.g. 1.5).");
+  }
+
+  const [whole, fraction = ""] = trimmed.split(".");
+  if (fraction.length > decimals) {
+    throw new Error(`At most ${decimals} decimal places are allowed.`);
+  }
+
+  const paddedFraction = fraction.padEnd(decimals, "0");
+  const stroops = BigInt(whole) * 10n ** BigInt(decimals) + BigInt(paddedFraction);
+
+  if (stroops <= 0n) {
+    throw new Error("Amount must be greater than zero.");
+  }
+  return stroops;
+}

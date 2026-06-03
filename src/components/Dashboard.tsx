@@ -11,7 +11,13 @@ interface LoadedStream {
   stream: Stream;
 }
 
-export function Dashboard({ address }: { address: string }) {
+export function Dashboard({
+  address,
+  refreshSignal = 0,
+}: {
+  address: string;
+  refreshSignal?: number; // bump this to force a reload (e.g. after creating)
+}) {
   const [streams, setStreams] = useState<LoadedStream[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +51,7 @@ export function Dashboard({ address }: { address: string }) {
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [address, refreshSignal]);
 
   if (loading) {
     return <p className="text-gray-500">Loading your streams…</p>;

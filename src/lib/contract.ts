@@ -20,8 +20,15 @@ import {
   scValToNative,
   BASE_FEE,
   xdr,
+  type Transaction,
 } from "@stellar/stellar-sdk";
-import { CONTRACT_ID, RPC_URL, NETWORK_PASSPHRASE } from "../config";
+import { signTransaction } from "@stellar/freighter-api";
+import {
+  CONTRACT_ID,
+  RPC_URL,
+  NETWORK_PASSPHRASE,
+  XLM_SAC,
+} from "../config";
 
 // ---------------------------------------------------------------------------
 // Types — a TypeScript mirror of the contract's Rust `Stream` struct.
@@ -123,4 +130,115 @@ export async function getStream(streamId: bigint | number): Promise<Stream> {
     ...raw,
     status: normalizeStatus(raw.status),
   } as Stream;
+}
+
+// ---------------------------------------------------------------------------
+// Write plumbing
+//
+// Unlike reads, writes change on-chain state, so they must be SIGNED by the
+// user's wallet and SUBMITTED (not just simulated). signAndSend is the reusable
+// engine; every write (create now, withdraw/pause/... later) flows through it.
+// ---------------------------------------------------------------------------
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+// Build -> prepare -> sign (Freighter) -> submit -> poll until confirmed.
+// Returns the successful transaction response; `.returnValue` holds whatever
+// the contract function returned (e.g. the new stream_id for create_stream).
+async function signAndSend(
+  operation: xdr.Operation,
+  senderAddress: string,
+): Promise<rpc.Api.GetSuccessfulTransactionResponse> {
+  // 1. Fetch the sender's live account so we use the correct sequence number.
+  const account = await server.getAccount(senderAddress);
+
+  // 2. Build the transaction with the user as the source (the fee payer).
+  const built = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: NETWORK_PASSPHRASE,
+  })
+    .addOperation(operation)
+    .setTimeout(30)
+    .build();
+
+  // 3. Prepare: simulate to attach the Soroban footprint, resource fees, and
+  //    authorization entries. Returns a new, ready-to-sign transaction.
+  const prepared = await server.prepareTransaction(built);
+
+  // 4. Sign with Freighter. One approval covers the call AND its inner auth
+  //    (e.g. the XLM transfer create_stream triggers). Returns signed XDR.
+  const signed = await signTransaction(prepared.toXDR(), {
+    networkPassphrase: NETWORK_PASSPHRASE,
+    address: senderAddress,
+  });
+  if (signed.error) {
+    throw new Error(signed.error.message);
+  }
+
+  // 5. Turn the signed XDR back into a Transaction and submit it.
+  const signedTx = TransactionBuilder.fromXDR(
+    signed.signedTxXdr,
+    NETWORK_PASSPHRASE,
+  ) as Transaction;
+
+  const sent = await server.sendTransaction(signedTx);
+  if (sent.status === "ERROR") {
+    throw new Error(
+      `Transaction submission failed: ${JSON.stringify(sent.errorResult)}`,
+    );
+  }
+
+  // 6. Poll until the network confirms (SUCCESS) or rejects (FAILED). "PENDING"
+  //    only means accepted into the queue, so we wait for a final status.
+  const TIMEOUT_MS = 30_000;
+  const start = Date.now();
+  let result = await server.getTransaction(sent.hash);
+  while (result.status === rpc.Api.GetTransactionStatus.NOT_FOUND) {
+    if (Date.now() - start > TIMEOUT_MS) {
+      throw new Error("Timed out waiting for transaction confirmation.");
+    }
+    await sleep(1000);
+    result = await server.getTransaction(sent.hash);
+  }
+
+  if (result.status !== rpc.Api.GetTransactionStatus.SUCCESS) {
+    throw new Error("Transaction failed on chain.");
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Write functions
+// ---------------------------------------------------------------------------
+
+export interface CreateStreamParams {
+  sender: string; // connected wallet (G...) — pays the deposit + fees
+  recipient: string; // who receives the stream (G...)
+  deposit: bigint; // amount in stroops (XLM * 10^7), already converted
+  startTime: number; // unix seconds
+  endTime: number; // unix seconds (must be > startTime and in the future)
+}
+
+// create_stream(sender, recipient, token, deposit, start_time, end_time) -> u64
+// Token is fixed to the native XLM SAC for now. Returns the new stream_id.
+export async function createStream(
+  params: CreateStreamParams,
+): Promise<bigint> {
+  const op = contract.call(
+    "create_stream",
+    new Address(params.sender).toScVal(),
+    new Address(params.recipient).toScVal(),
+    new Address(XLM_SAC).toScVal(),
+    nativeToScVal(params.deposit, { type: "i128" }),
+    nativeToScVal(params.startTime, { type: "u64" }),
+    nativeToScVal(params.endTime, { type: "u64" }),
+  );
+
+  const result = await signAndSend(op, params.sender);
+
+  // create_stream returns the new stream_id (u64 -> bigint).
+  if (result.returnValue) {
+    return scValToNative(result.returnValue) as bigint;
+  }
+  throw new Error("Stream created but no id was returned.");
 }
