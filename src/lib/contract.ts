@@ -114,7 +114,13 @@ export async function getStreamCount(): Promise<bigint> {
 export async function getStreamsByUser(address: string): Promise<bigint[]> {
   const addrScVal = new Address(address).toScVal();
   const retval = await simulateRead("get_streams_by_user", [addrScVal]);
-  return scValToNative(retval) as bigint[];
+  const ids = scValToNative(retval) as bigint[];
+
+  // The contract indexes a stream under BOTH sender and recipient, so a stream
+  // you send to yourself appears twice in this list. Dedupe so the UI never
+  // renders the same stream more than once (bigints are primitives, so Set
+  // compares them by value).
+  return [...new Set(ids)];
 }
 
 // get_stream(stream_id) -> Stream. Fetch one full stream by its id. The id is a
