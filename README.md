@@ -6,7 +6,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5%2B-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite)](https://vite.dev)
 
-**The frontend dashboard for PayStream — open-source, real-time payment streaming on Stellar.**
+**The reference frontend for PayStream — showing developers how to build on the soroban-paystream contract**
 
 Create, manage, and monitor per-second payment streams directly from your browser. No CLI, no manual transaction crafting — just connect a wallet and stream. Built on the [soroban-paystream](https://github.com/OpenStreamFi/soroban-paystream) smart contract.
 
