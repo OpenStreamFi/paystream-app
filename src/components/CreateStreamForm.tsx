@@ -1,7 +1,3 @@
-// CreateStreamForm — collects recipient / amount / duration, converts them to
-// contract units, and calls createStream(). This is the app's first WRITE, so
-// submitting triggers a Freighter signing popup and an on-chain confirmation.
-
 import { useState, type FormEvent } from "react";
 import { StrKey } from "@stellar/stellar-sdk";
 import { createStream } from "../lib/contract";
@@ -29,7 +25,6 @@ export function CreateStreamForm({
     setError(null);
     setSuccess(null);
 
-    // --- Validate + convert inputs (all client-side before any network call) ---
     let deposit: bigint;
     let startTime: number;
     let endTime: number;
@@ -38,14 +33,13 @@ export function CreateStreamForm({
         throw new Error("Recipient is not a valid Stellar address (G...).");
       }
 
-      deposit = xlmToStroops(amount); // throws on bad amount
+      deposit = xlmToStroops(amount);
 
       const numDays = Number(days);
       if (!Number.isFinite(numDays) || numDays <= 0) {
         throw new Error("Duration must be a positive number of days.");
       }
 
-      // start now, end after the chosen number of days (contract wants u64 secs).
       startTime = Math.floor(Date.now() / 1000);
       endTime = startTime + Math.round(numDays * SECONDS_PER_DAY);
     } catch (err) {
@@ -53,7 +47,6 @@ export function CreateStreamForm({
       return;
     }
 
-    // --- Submit: sign with Freighter, then wait for on-chain confirmation ---
     setSubmitting(true);
     try {
       const id = await createStream({

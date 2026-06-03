@@ -1,14 +1,3 @@
-// contract.ts — a typed, read-only client for the PayStream Soroban contract.
-//
-// Big idea (worth re-reading): Soroban has no "query" endpoint. To READ data we
-// build a transaction that *would* call the function, then SIMULATE it instead
-// of submitting. Simulation runs the contract on the RPC server and hands back
-// the return value — no signing, no fees, no on-chain change. That's why we can
-// use a throwaway random account as the transaction "source": it's never used.
-//
-// This file only contains READS. Writes (create/withdraw/pause/...) need wallet
-// signing and will live elsewhere.
-
 import {
   rpc,
   Contract,
@@ -30,12 +19,7 @@ import {
   XLM_SAC,
 } from "../config";
 
-// ---------------------------------------------------------------------------
-// Types — a TypeScript mirror of the contract's Rust `Stream` struct.
-// Note i128 / u64 values come back from the SDK as `bigint` (JS numbers can't
-// safely hold 64/128-bit integers), so we type them that way.
-// ---------------------------------------------------------------------------
-
+// Mirror of the contract's Rust `Stream`. i128/u64 fields decode to `bigint`.
 export type StreamStatus = "Active" | "Paused" | "Cancelled" | "Completed";
 
 export interface Stream {
@@ -52,23 +36,15 @@ export interface Stream {
   total_paused: bigint;
 }
 
-// ---------------------------------------------------------------------------
-// Shared plumbing
-// ---------------------------------------------------------------------------
-
-// One server connection + contract handle for the whole module.
 const server = new rpc.Server(RPC_URL);
 const contract = new Contract(CONTRACT_ID);
 
-// A random public key used only as the transaction source for simulations.
-// It never signs anything and doesn't need to exist on-chain.
+// Throwaway source for read simulations; never signs and need not exist on-chain.
 const PLACEHOLDER_PUBKEY = Keypair.random().publicKey();
 
-// Build a transaction that calls `method` with `args`, simulate it, and return
-// the raw ScVal result. Every read function below funnels through this.
+/** Simulate a contract call and return the raw ScVal result. */
 async function simulateRead(method: string, args: xdr.ScVal[] = []) {
-  // A fresh source account each call (sequence "0" — simulation ignores it).
-  const source = new Account(PLACEHOLDER_PUBKEY, "0");
+  const source = new Account(PLACEHOLDER_PUBKEY, "0"); // sequence ignored by simulation
 
   const tx = new TransactionBuilder(source, {
     fee: BASE_FEE,
@@ -80,7 +56,6 @@ async function simulateRead(method: string, args: xdr.ScVal[] = []) {
 
   const sim = await server.simulateTransaction(tx);
 
-  // Simulation can fail (bad args, contract panic e.g. "stream not found").
   if (!rpc.Api.isSimulationSuccess(sim)) {
     throw new Error(`Simulation failed for ${method}: ${sim.error}`);
   }
@@ -88,77 +63,64 @@ async function simulateRead(method: string, args: xdr.ScVal[] = []) {
     throw new Error(`No result returned from ${method}`);
   }
 
-  return sim.result.retval; // raw ScVal — caller decodes with scValToNative
+  return sim.result.retval;
 }
 
-// Rust unit enums (StreamStatus) come back as a single-element array like
-// ["Active"]. Normalize to a plain string the rest of the app can switch on.
+/** Rust unit enums decode to a single-element array (["Active"]); flatten to a string. */
 function normalizeStatus(raw: unknown): StreamStatus {
   const value = Array.isArray(raw) ? raw[0] : raw;
   return value as StreamStatus;
 }
 
-// ---------------------------------------------------------------------------
-// Read functions
-// ---------------------------------------------------------------------------
-
-// get_stream_count() -> u64. Total number of streams ever created.
+/** Total number of streams ever created. */
 export async function getStreamCount(): Promise<bigint> {
   const retval = await simulateRead("get_stream_count");
   return scValToNative(retval) as bigint;
 }
 
-// get_streams_by_user(address) -> Vec<u64>. The stream IDs a given account is
-// involved in (as sender OR recipient). We must hand the contract an ScVal
-// "address", which `new Address(...).toScVal()` produces from a G... string.
+/** Stream IDs the given account is involved in (as sender or recipient). */
 export async function getStreamsByUser(address: string): Promise<bigint[]> {
   const addrScVal = new Address(address).toScVal();
   const retval = await simulateRead("get_streams_by_user", [addrScVal]);
   const ids = scValToNative(retval) as bigint[];
 
-  // The contract indexes a stream under BOTH sender and recipient, so a stream
-  // you send to yourself appears twice in this list. Dedupe so the UI never
-  // renders the same stream more than once (bigints are primitives, so Set
-  // compares them by value).
+  // A stream is indexed under both sender and recipient, so self-streams appear
+  // twice. Dedupe so the UI never renders the same stream more than once.
   return [...new Set(ids)];
 }
 
-// get_stream(stream_id) -> Stream. Fetch one full stream by its id. The id is a
-// u64, so we encode the number/bigint with the matching ScVal type.
+/** Fetch one full stream by id. */
 export async function getStream(streamId: bigint | number): Promise<Stream> {
   const idScVal = nativeToScVal(streamId, { type: "u64" });
   const retval = await simulateRead("get_stream", [idScVal]);
   const raw = scValToNative(retval) as Record<string, unknown>;
 
-  // scValToNative already maps struct fields by name and i128/u64 -> bigint.
-  // We just fix up the status enum and assert the final shape.
   return {
     ...raw,
     status: normalizeStatus(raw.status),
   } as Stream;
 }
 
-// ---------------------------------------------------------------------------
-// Write plumbing
-//
-// Unlike reads, writes change on-chain state, so they must be SIGNED by the
-// user's wallet and SUBMITTED (not just simulated). signAndSend is the reusable
-// engine; every write (create now, withdraw/pause/... later) flows through it.
-// ---------------------------------------------------------------------------
+/** Amount currently claimable (withdrawable) for a stream, in stroops. */
+export async function getClaimable(
+  streamId: bigint | number,
+): Promise<bigint> {
+  const idScVal = nativeToScVal(streamId, { type: "u64" });
+  const retval = await simulateRead("get_claimable", [idScVal]);
+  return scValToNative(retval) as bigint;
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Build -> prepare -> sign (Freighter) -> submit -> poll until confirmed.
-// Returns the successful transaction response; `.returnValue` holds whatever
-// the contract function returned (e.g. the new stream_id for create_stream).
+/** Build, prepare, sign (Freighter), submit, and poll a write until confirmed.
+ *  Returns the successful response; `.returnValue` holds the call's return. */
 async function signAndSend(
   operation: xdr.Operation,
   senderAddress: string,
 ): Promise<rpc.Api.GetSuccessfulTransactionResponse> {
-  // 1. Fetch the sender's live account so we use the correct sequence number.
+  // Live account gives us the correct next sequence number.
   const account = await server.getAccount(senderAddress);
 
-  // 2. Build the transaction with the user as the source (the fee payer).
   const built = new TransactionBuilder(account, {
     fee: BASE_FEE,
     networkPassphrase: NETWORK_PASSPHRASE,
@@ -167,12 +129,10 @@ async function signAndSend(
     .setTimeout(30)
     .build();
 
-  // 3. Prepare: simulate to attach the Soroban footprint, resource fees, and
-  //    authorization entries. Returns a new, ready-to-sign transaction.
+  // Simulate to attach the Soroban footprint, resource fees, and auth entries.
   const prepared = await server.prepareTransaction(built);
 
-  // 4. Sign with Freighter. One approval covers the call AND its inner auth
-  //    (e.g. the XLM transfer create_stream triggers). Returns signed XDR.
+  // One Freighter approval signs the call AND its inner auth (e.g. the XLM transfer).
   const signed = await signTransaction(prepared.toXDR(), {
     networkPassphrase: NETWORK_PASSPHRASE,
     address: senderAddress,
@@ -181,7 +141,6 @@ async function signAndSend(
     throw new Error(signed.error.message);
   }
 
-  // 5. Turn the signed XDR back into a Transaction and submit it.
   const signedTx = TransactionBuilder.fromXDR(
     signed.signedTxXdr,
     NETWORK_PASSPHRASE,
@@ -194,8 +153,7 @@ async function signAndSend(
     );
   }
 
-  // 6. Poll until the network confirms (SUCCESS) or rejects (FAILED). "PENDING"
-  //    only means accepted into the queue, so we wait for a final status.
+  // "PENDING" only means queued, so poll for a final status.
   const TIMEOUT_MS = 30_000;
   const start = Date.now();
   let result = await server.getTransaction(sent.hash);
@@ -213,20 +171,15 @@ async function signAndSend(
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// Write functions
-// ---------------------------------------------------------------------------
-
 export interface CreateStreamParams {
-  sender: string; // connected wallet (G...) — pays the deposit + fees
-  recipient: string; // who receives the stream (G...)
-  deposit: bigint; // amount in stroops (XLM * 10^7), already converted
+  sender: string;
+  recipient: string;
+  deposit: bigint; // stroops (XLM * 10^7)
   startTime: number; // unix seconds
-  endTime: number; // unix seconds (must be > startTime and in the future)
+  endTime: number; // unix seconds
 }
 
-// create_stream(sender, recipient, token, deposit, start_time, end_time) -> u64
-// Token is fixed to the native XLM SAC for now. Returns the new stream_id.
+/** Create a stream paying native XLM, returning the new stream_id. */
 export async function createStream(
   params: CreateStreamParams,
 ): Promise<bigint> {
@@ -242,7 +195,6 @@ export async function createStream(
 
   const result = await signAndSend(op, params.sender);
 
-  // create_stream returns the new stream_id (u64 -> bigint).
   if (result.returnValue) {
     return scValToNative(result.returnValue) as bigint;
   }

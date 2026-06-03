@@ -1,6 +1,3 @@
-// App — the top-level layout. For this first step it's just a header with the
-// wallet button and a panel that reflects the connection state. Everything
-// else (creating streams, withdrawing, etc.) will hang off this later.
 
 import { useState } from "react";
 import { useWallet } from "./hooks/useWallet";
@@ -10,17 +7,13 @@ import { CreateStreamForm } from "./components/CreateStreamForm";
 import { CONTRACT_ID } from "./config";
 
 function App() {
-  // One call gives us the whole wallet API. We pass it down to ConnectWallet
-  // so there's a single source of truth for "who is connected".
   const wallet = useWallet();
 
-  // Bumping this counter re-runs the Dashboard's fetch. The form increments it
-  // after a successful create so the new stream appears without a page reload.
+  // Bumped after a successful create to re-trigger the Dashboard fetch.
   const [refresh, setRefresh] = useState(0);
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
-      {/* Header */}
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
@@ -31,7 +24,6 @@ function App() {
         </div>
       </header>
 
-      {/* Main */}
       <main className="mx-auto max-w-5xl px-6 py-12">
         <h2 className="text-3xl font-bold tracking-tight">
           Stream payments by the second on Stellar
@@ -41,8 +33,6 @@ function App() {
           streams secured by the PayStream Soroban contract.
         </p>
 
-        {/* When connected, show the dashboard of the user's streams.
-            Otherwise prompt them to connect. */}
         <div className="mt-10">
           {wallet.address ? (
             <div className="space-y-10">

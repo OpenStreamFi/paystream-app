@@ -1,7 +1,3 @@
-// ConnectWallet — the button + status UI for wallet connection.
-// It reads everything from the useWallet hook and just renders the right
-// state. No Freighter calls happen here directly.
-
 import type { UseWalletReturn } from "../hooks/useWallet";
 import { shortenAddress } from "../lib/format";
 
@@ -16,7 +12,6 @@ export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
     disconnect,
   } = wallet;
 
-  // Case 1: extension isn't installed — point them to the download page.
   if (!isInstalled) {
     return (
       <a
@@ -30,7 +25,6 @@ export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
     );
   }
 
-  // Case 2: connected — show the address + a disconnect button.
   if (address) {
     return (
       <div className="flex items-center gap-3">
@@ -52,7 +46,6 @@ export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
     );
   }
 
-  // Case 3: installed but not connected — show the connect button (+ any error).
   return (
     <div className="flex flex-col items-end gap-1">
       <button

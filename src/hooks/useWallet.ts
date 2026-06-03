@@ -1,10 +1,3 @@
-// useWallet — a custom React hook that wraps all Freighter wallet logic.
-//
-// Why a hook? So any component can do `const { address, connect } = useWallet()`
-// without knowing anything about Freighter's API. All the messy details
-// (is the extension installed? is it on the right network? did the user reject
-// the popup?) live here in one place.
-
 import { useCallback, useEffect, useState } from "react";
 import {
   isConnected as freighterIsConnected,
@@ -15,19 +8,18 @@ import {
 } from "@stellar/freighter-api";
 import { FREIGHTER_NETWORK } from "../config";
 
-// All the pieces of "wallet state" a component might care about.
 export interface WalletState {
-  address: string | null; // the connected G... public key, or null
-  network: string | null; // "TESTNET" / "PUBLIC" as reported by Freighter
-  isInstalled: boolean; // is the Freighter extension present in this browser?
-  isConnecting: boolean; // true while a connect attempt is in flight
-  error: string | null; // last human-readable error, if any
+  address: string | null;
+  network: string | null;
+  isInstalled: boolean;
+  isConnecting: boolean;
+  error: string | null;
 }
 
 export interface UseWalletReturn extends WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
-  isWrongNetwork: boolean; // connected, but Freighter is not on TESTNET
+  isWrongNetwork: boolean;
 }
 
 const initialState: WalletState = {
@@ -41,13 +33,11 @@ const initialState: WalletState = {
 export function useWallet(): UseWalletReturn {
   const [state, setState] = useState<WalletState>(initialState);
 
-  // Small helper so we can update just a few fields without rewriting the whole object.
   const patch = (changes: Partial<WalletState>) =>
     setState((prev) => ({ ...prev, ...changes }));
 
-  // On first mount: check if Freighter is installed, and if the user has
-  // *already* authorized this site before, silently restore their address.
-  // This is what makes the wallet "stay connected" across page refreshes.
+  // On mount, silently restore the address if this site was already authorized,
+  // so the connection survives a page refresh.
   useEffect(() => {
     (async () => {
       const installed = await freighterIsConnected();
@@ -57,7 +47,6 @@ export function useWallet(): UseWalletReturn {
       }
       patch({ isInstalled: true });
 
-      // isAllowed = has THIS website been granted access before?
       const allowed = await isAllowed();
       if (allowed.isAllowed && !allowed.error) {
         const addr = await getAddress();
@@ -69,9 +58,7 @@ export function useWallet(): UseWalletReturn {
     })();
   }, []);
 
-  // connect() — called when the user clicks the "Connect Wallet" button.
-  // requestAccess() pops the Freighter approval dialog (or returns the address
-  // immediately if already approved).
+  /** Prompt Freighter for access and store the returned address. */
   const connect = useCallback(async () => {
     patch({ isConnecting: true, error: null });
     try {
@@ -86,7 +73,7 @@ export function useWallet(): UseWalletReturn {
 
       const access = await requestAccess();
       if (access.error) {
-        // The user clicked "Reject" in the popup, or something else failed.
+        // Includes the user rejecting the popup.
         patch({ isConnecting: false, error: access.error.message });
         return;
       }
@@ -106,14 +93,11 @@ export function useWallet(): UseWalletReturn {
     }
   }, []);
 
-  // disconnect() — Freighter has no real "disconnect" API (the user revokes
-  // access from the extension itself). So we just clear our local state, which
-  // makes the UI behave as logged-out.
+  /** Clear local state. Freighter has no disconnect API; access is revoked in the extension. */
   const disconnect = useCallback(() => {
     setState({ ...initialState, isInstalled: state.isInstalled });
   }, [state.isInstalled]);
 
-  // Derived flag: are we connected but pointed at the wrong network?
   const isWrongNetwork =
     state.address !== null &&
     state.network !== null &&
