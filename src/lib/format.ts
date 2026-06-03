@@ -40,3 +40,34 @@ export function xlmToStroops(input: string, decimals = 7): bigint {
   }
   return stroops;
 }
+
+/** Human-readable duration from a span in seconds, e.g. 86400 -> "1 day". */
+export function formatDuration(seconds: number): string {
+  const units: [number, string][] = [
+    [86_400, "day"],
+    [3_600, "hour"],
+    [60, "minute"],
+    [1, "second"],
+  ];
+  for (const [size, name] of units) {
+    if (seconds >= size && seconds % size === 0) {
+      const n = seconds / size;
+      return `${n} ${name}${n === 1 ? "" : "s"}`;
+    }
+  }
+  return `${seconds} seconds`;
+}
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+/** Format two unix-second timestamps as "Jun 3 2026 → Jun 10 2026". */
+export function formatDateRange(startSec: number, endSec: number): string {
+  const fmt = (s: number) => {
+    const d = new Date(s * 1000);
+    return `${MONTHS[d.getMonth()]} ${d.getDate()} ${d.getFullYear()}`;
+  };
+  return `${fmt(startSec)} → ${fmt(endSec)}`;
+}

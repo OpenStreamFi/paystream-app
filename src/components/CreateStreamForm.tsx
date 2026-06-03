@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { StrKey } from "@stellar/stellar-sdk";
 import { createStream } from "../lib/contract";
 import { xlmToStroops } from "../lib/format";
+import { toFriendlyError } from "../lib/errors";
 
 const SECONDS_PER_DAY = 86_400;
 
@@ -62,7 +63,7 @@ export function CreateStreamForm({
       setDays("");
       onCreated(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create stream.");
+      setError(toFriendlyError(err));
     } finally {
       setSubmitting(false);
     }

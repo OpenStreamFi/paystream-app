@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getStreamsByUser, getStream, type Stream } from "../lib/contract";
+import { toFriendlyError } from "../lib/errors";
 import { StreamCard } from "./StreamCard";
 
 interface LoadedStream {
@@ -10,9 +11,11 @@ interface LoadedStream {
 export function Dashboard({
   address,
   refreshSignal = 0,
+  onStreamChanged,
 }: {
   address: string;
   refreshSignal?: number; // bump to force a reload (e.g. after creating)
+  onStreamChanged: () => void; // called after an action succeeds, to refresh
 }) {
   const [streams, setStreams] = useState<LoadedStream[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +36,7 @@ export function Dashboard({
         if (!cancelled) setStreams(loaded);
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Failed to load streams.");
+          setError(toFriendlyError(e));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -68,7 +71,14 @@ export function Dashboard({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {streams.map(({ id, stream }) => (
-        <StreamCard key={id.toString()} id={id} stream={stream} />
+        <StreamCard
+          key={id.toString()}
+          id={id}
+          stream={stream}
+          connectedAddress={address}
+          refreshSignal={refreshSignal}
+          onActionComplete={onStreamChanged}
+        />
       ))}
     </div>
   );

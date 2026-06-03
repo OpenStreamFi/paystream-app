@@ -44,7 +44,11 @@ function App() {
                 <h3 className="mb-4 text-lg font-semibold text-gray-900">
                   My Streams
                 </h3>
-                <Dashboard address={wallet.address} refreshSignal={refresh} />
+                <Dashboard
+                  address={wallet.address}
+                  refreshSignal={refresh}
+                  onStreamChanged={() => setRefresh((n) => n + 1)}
+                />
               </section>
             </div>
           ) : (

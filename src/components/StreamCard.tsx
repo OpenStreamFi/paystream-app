@@ -1,6 +1,12 @@
 import type { Stream, StreamStatus } from "../lib/contract";
-import { shortenAddress, formatTokenAmount } from "../lib/format";
+import {
+  shortenAddress,
+  formatTokenAmount,
+  formatDuration,
+  formatDateRange,
+} from "../lib/format";
 import { useClaimable } from "../hooks/useClaimable";
+import { StreamActions } from "./StreamActions";
 
 const STATUS_STYLES: Record<StreamStatus, string> = {
   Active: "bg-emerald-100 text-emerald-800",
@@ -9,8 +15,24 @@ const STATUS_STYLES: Record<StreamStatus, string> = {
   Completed: "bg-gray-200 text-gray-700",
 };
 
-export function StreamCard({ id, stream }: { id: bigint; stream: Stream }) {
-  const { claimable, error: claimableError } = useClaimable(id, stream.status);
+export function StreamCard({
+  id,
+  stream,
+  connectedAddress,
+  refreshSignal,
+  onActionComplete,
+}: {
+  id: bigint;
+  stream: Stream;
+  connectedAddress: string;
+  refreshSignal: number;
+  onActionComplete: () => void;
+}) {
+  const { claimable, error: claimableError } = useClaimable(
+    id,
+    stream.status,
+    refreshSignal,
+  );
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -38,6 +60,15 @@ export function StreamCard({ id, stream }: { id: bigint; stream: Stream }) {
             {shortenAddress(stream.recipient)}
           </span>
         </div>
+        <div className="flex justify-between">
+          <span className="text-gray-500">Duration</span>
+          <span className="text-gray-800">
+            {formatDuration(Number(stream.end_time - stream.start_time))}
+          </span>
+        </div>
+        <div className="text-xs text-gray-400">
+          {formatDateRange(Number(stream.start_time), Number(stream.end_time))}
+        </div>
       </div>
 
       <div className="mt-4 border-t border-gray-100 pt-4 text-sm">
@@ -64,6 +95,14 @@ export function StreamCard({ id, stream }: { id: bigint; stream: Stream }) {
           </span>
         </div>
       </div>
+
+      <StreamActions
+        id={id}
+        stream={stream}
+        connectedAddress={connectedAddress}
+        claimable={claimable}
+        onActionComplete={onActionComplete}
+      />
     </div>
   );
 }

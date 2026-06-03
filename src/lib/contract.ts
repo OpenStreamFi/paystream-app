@@ -200,3 +200,34 @@ export async function createStream(
   }
   throw new Error("Stream created but no id was returned.");
 }
+
+// Single-arg writes share this shape. `caller` is the wallet that must sign:
+// the recipient for withdraw, the sender for pause/resume/cancel.
+async function invokeWithStreamId(
+  method: string,
+  streamId: bigint,
+  caller: string,
+): Promise<void> {
+  const op = contract.call(method, nativeToScVal(streamId, { type: "u64" }));
+  await signAndSend(op, caller);
+}
+
+/** Withdraw the claimable amount to the recipient (must be signed by recipient). */
+export function withdraw(streamId: bigint, recipient: string): Promise<void> {
+  return invokeWithStreamId("withdraw", streamId, recipient);
+}
+
+/** Pause an active stream (must be signed by sender). */
+export function pauseStream(streamId: bigint, sender: string): Promise<void> {
+  return invokeWithStreamId("pause_stream", streamId, sender);
+}
+
+/** Resume a paused stream (must be signed by sender). */
+export function resumeStream(streamId: bigint, sender: string): Promise<void> {
+  return invokeWithStreamId("resume_stream", streamId, sender);
+}
+
+/** Cancel a stream, paying out earned funds and refunding the rest (signed by sender). */
+export function cancelStream(streamId: bigint, sender: string): Promise<void> {
+  return invokeWithStreamId("cancel_stream", streamId, sender);
+}
