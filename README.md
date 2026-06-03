@@ -169,6 +169,28 @@ In Freighter, go to **Settings → Network → Testnet**. The app displays a war
 
 ---
 
+## Roadmap
+
+### Phase 1 — Core App ✅
+- [x] Freighter wallet connect with auto-reconnect
+- [x] Create stream form with validation
+- [x] Live dashboard with per-second claimable polling
+- [x] Withdraw, pause, resume, and cancel actions
+
+### Phase 2 — UX & Polish ✅
+- [x] Landing page with hero, how-it-works, and features
+- [x] Site footer with on-chain details
+- [x] Incoming / outgoing role badges and stream counts
+- [x] Friendly, human-readable contract error messages
+
+### Phase 3 — Ecosystem
+- [ ] TypeScript SDK (@openstreamfi/sdk) — letting any developer add payment streaming to their Stellar app with a simple npm install
+- [ ] Multi-token support (beyond XLM)
+- [ ] Batch stream creation
+- [ ] Mainnet deployment
+
+---
+
 ## Contributing
 
 Contributions are welcome across every area — React components, TypeScript, Tailwind styling, testing, documentation, and accessibility.
