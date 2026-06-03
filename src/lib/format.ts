@@ -5,15 +5,22 @@ export function shortenAddress(addr: string, chars = 4): string {
   return `${addr.slice(0, chars)}…${addr.slice(-chars)}`;
 }
 
-/** Format a raw token amount (integer scaled by `decimals`) as a human string. */
-export function formatTokenAmount(raw: bigint, decimals = 7): string {
+/** Format a raw token amount (integer scaled by `decimals`) as a human string.
+ *  `maxDecimals` caps the displayed fractional digits (truncates, not rounds). */
+export function formatTokenAmount(
+  raw: bigint,
+  decimals = 7,
+  maxDecimals = decimals,
+): string {
   const negative = raw < 0n;
   const abs = negative ? -raw : raw;
   const base = 10n ** BigInt(decimals);
 
   const whole = abs / base;
   const fraction = abs % base;
-  const fractionStr = fraction.toString().padStart(decimals, "0").replace(/0+$/, "");
+  let fractionStr = fraction.toString().padStart(decimals, "0");
+  if (maxDecimals < decimals) fractionStr = fractionStr.slice(0, maxDecimals);
+  fractionStr = fractionStr.replace(/0+$/, "");
 
   const body = fractionStr ? `${whole}.${fractionStr}` : `${whole}`;
   return negative ? `-${body}` : body;

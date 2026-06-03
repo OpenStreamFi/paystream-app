@@ -75,7 +75,14 @@ export function StreamCard({
         <div className="flex justify-between">
           <span className="text-gray-500">Deposit</span>
           <span className="font-medium text-gray-900">
-            {formatTokenAmount(stream.deposit)}
+            {formatTokenAmount(stream.deposit)} XLM
+          </span>
+        </div>
+
+        <div className="mt-1 flex justify-between">
+          <span className="text-gray-500">Rate</span>
+          <span className="text-gray-800">
+            {formatTokenAmount(stream.rate_per_sec)} XLM/sec
           </span>
         </div>
 
@@ -91,7 +98,7 @@ export function StreamCard({
               ? "—"
               : claimable === null
                 ? "…"
-                : formatTokenAmount(claimable)}
+                : `${formatTokenAmount(claimable, 7, 4)} XLM`}
           </span>
         </div>
       </div>

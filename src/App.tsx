@@ -15,7 +15,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-[900px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2">
             <span className="text-2xl">💧</span>
             <h1 className="text-xl font-bold">PayStream</h1>
@@ -24,7 +24,7 @@ function App() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-6 py-12">
+      <main className="mx-auto max-w-[900px] px-6 py-12">
         <h2 className="text-3xl font-bold tracking-tight">
           Stream payments by the second on Stellar
         </h2>
@@ -35,7 +35,7 @@ function App() {
 
         <div className="mt-10">
           {wallet.address ? (
-            <div className="space-y-10">
+            <div className="space-y-16">
               <CreateStreamForm
                 sender={wallet.address}
                 onCreated={() => setRefresh((n) => n + 1)}
