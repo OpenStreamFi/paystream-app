@@ -29,9 +29,19 @@ export function StreamCard({
   refreshSignal: number;
   onActionComplete: () => void;
 }) {
+  // The contract only flips Active → Completed when someone withdraws after the
+  // end. Until then an elapsed stream still reads as "Active" on-chain, so we
+  // derive the real state from end_time for display, polling, and actions.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const ended =
+    (stream.status === "Active" || stream.status === "Paused") &&
+    nowSec >= Number(stream.end_time);
+  const effectiveStatus: StreamStatus = ended ? "Completed" : stream.status;
+  const statusLabel = ended ? "Ended" : stream.status;
+
   const { claimable, error: claimableError } = useClaimable(
     id,
-    stream.status,
+    effectiveStatus,
     refreshSignal,
   );
 
@@ -67,9 +77,9 @@ export function StreamCard({
           )}
         </div>
         <span
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[stream.status]}`}
+          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[effectiveStatus]}`}
         >
-          {stream.status}
+          {statusLabel}
         </span>
       </div>
 
@@ -121,7 +131,7 @@ export function StreamCard({
         <div className="mt-1 flex justify-between">
           <span className="text-gray-500">
             Claimable
-            {stream.status === "Active" && (
+            {effectiveStatus === "Active" && (
               <span className="ml-1 text-xs text-emerald-600">● live</span>
             )}
           </span>
@@ -140,6 +150,7 @@ export function StreamCard({
         stream={stream}
         connectedAddress={connectedAddress}
         claimable={claimable}
+        ended={ended}
         onActionComplete={onActionComplete}
       />
     </div>

@@ -16,12 +16,16 @@ export function StreamActions({
   stream,
   connectedAddress,
   claimable,
+  ended,
   onActionComplete,
 }: {
   id: bigint;
   stream: Stream;
   connectedAddress: string;
   claimable: bigint | null;
+  // True once end_time has passed: the recipient may still withdraw the final
+  // amount, but pause/resume/cancel no longer apply.
+  ended: boolean;
   onActionComplete: () => void;
 }) {
   // Tracks which action is in flight (also used to disable all buttons).
@@ -34,10 +38,10 @@ export function StreamActions({
 
   const canWithdraw =
     isRecipient && claimable !== null && claimable > 0n;
-  const canPause = isSender && stream.status === "Active";
-  const canResume = isSender && stream.status === "Paused";
+  const canPause = isSender && !ended && stream.status === "Active";
+  const canResume = isSender && !ended && stream.status === "Paused";
   const canCancel =
-    isSender && (stream.status === "Active" || stream.status === "Paused");
+    isSender && !ended && (stream.status === "Active" || stream.status === "Paused");
 
   async function run(label: string, fn: () => Promise<void>) {
     setBusy(label);
