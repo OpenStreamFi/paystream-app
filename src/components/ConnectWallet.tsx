@@ -1,5 +1,6 @@
 import type { UseWalletReturn } from "../hooks/useWallet";
 import { shortenAddress } from "../lib/format";
+import { CopyButton } from "./CopyButton";
 
 export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
   const {
@@ -33,9 +34,12 @@ export function ConnectWallet({ wallet }: { wallet: UseWalletReturn }) {
             Wrong network — switch Freighter to Testnet
           </span>
         )}
-        <span className="rounded-lg bg-emerald-100 px-3 py-2 font-mono text-sm text-emerald-800">
-          {shortenAddress(address)}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="rounded-lg bg-emerald-100 px-3 py-2 font-mono text-sm text-emerald-800">
+            {shortenAddress(address)}
+          </span>
+          <CopyButton text={address} />
+        </div>
         <button
           onClick={disconnect}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"

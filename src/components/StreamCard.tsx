@@ -7,6 +7,7 @@ import {
 } from "../lib/format";
 import { useClaimable } from "../hooks/useClaimable";
 import { StreamActions } from "./StreamActions";
+import { CopyButton } from "./CopyButton";
 
 const STATUS_STYLES: Record<StreamStatus, string> = {
   Active: "bg-emerald-100 text-emerald-800",
@@ -51,9 +52,12 @@ export function StreamCard({
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-900">
-            Stream #{id.toString()}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-semibold text-gray-900">
+              Stream #{id.toString()}
+            </span>
+            <CopyButton text={id.toString()} />
+          </div>
           {role && (
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-medium ${role.style}`}
@@ -72,15 +76,21 @@ export function StreamCard({
       <div className="mt-4 space-y-1 text-sm">
         <div className="flex justify-between">
           <span className="text-gray-500">From</span>
-          <span className="font-mono text-gray-800">
-            {shortenAddress(stream.sender)}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-gray-800">
+              {shortenAddress(stream.sender)}
+            </span>
+            <CopyButton text={stream.sender} />
+          </div>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">To</span>
-          <span className="font-mono text-gray-800">
-            {shortenAddress(stream.recipient)}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-gray-800">
+              {shortenAddress(stream.recipient)}
+            </span>
+            <CopyButton text={stream.recipient} />
+          </div>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Duration</span>
