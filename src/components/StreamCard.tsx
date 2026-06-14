@@ -4,6 +4,7 @@ import {
   formatTokenAmount,
   formatDuration,
   formatDateRange,
+  formatTimeRemaining,
 } from "../lib/format";
 import { useClaimable } from "../hooks/useClaimable";
 import { StreamActions } from "./StreamActions";
@@ -108,8 +109,13 @@ export function StreamCard({
             {formatDuration(Number(stream.end_time - stream.start_time))}
           </span>
         </div>
-        <div className="text-xs text-gray-400">
-          {formatDateRange(Number(stream.start_time), Number(stream.end_time))}
+        <div
+          className="text-xs text-gray-400"
+          title={formatDateRange(Number(stream.start_time), Number(stream.end_time))}
+        >
+          {ended || stream.status === "Completed" || stream.status === "Cancelled"
+            ? "Ended"
+            : formatTimeRemaining(Number(stream.end_time), nowSec)}
         </div>
       </div>
 

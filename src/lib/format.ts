@@ -78,3 +78,30 @@ export function formatDateRange(startSec: number, endSec: number): string {
   };
   return `${fmt(startSec)} → ${fmt(endSec)}`;
 }
+
+/** Format the time remaining until endSec as a relative countdown (e.g., "2 days left").
+ *  Returns "Ended" if past endSec. */
+export function formatTimeRemaining(endSec: number, nowSec?: number): string {
+  const now = nowSec ?? Math.floor(Date.now() / 1000);
+  if (now >= endSec) {
+    return "Ended";
+  }
+
+  const remaining = endSec - now;
+  const units: [number, string][] = [
+    [86_400, "day"],
+    [3_600, "hour"],
+    [60, "minute"],
+    [1, "second"],
+  ];
+
+  for (const [size, name] of units) {
+    if (remaining >= size) {
+      const n = Math.floor(remaining / size);
+      return `${n} ${name}${n === 1 ? "" : "s"} left`;
+    }
+  }
+
+  return "Ended";
+}
+
