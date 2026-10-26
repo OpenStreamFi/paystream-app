@@ -1,5 +1,6 @@
 # paystream-app
 
+[![CI](https://github.com/openstreamfi/paystream-app/actions/workflows/ci.yml/badge.svg)](https://github.com/openstreamfi/paystream-app/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-MIT-green)](./LICENSE)
 [![Stellar](https://img.shields.io/badge/Stellar-Soroban-7D00FF?logo=stellar)](https://stellar.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
